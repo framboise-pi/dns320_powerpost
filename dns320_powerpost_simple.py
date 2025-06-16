@@ -14,7 +14,7 @@
 #
 # ASCII art generator: http://patorjk.com/software/taag/
 #
-# VERSION 0.1 ASPERGE ABRUTIE
+# VERSION 0.2 ASPERGE BAVEUSE
 #
 #	SETTINGS SHOULD BE SET MANUALLY IN THE HEAD OF THIS SCRIPT
 #	I LEFT MINE
@@ -23,15 +23,18 @@
 #		- fill the settings
 #		- uncomment the desired line at the bottom of this script
 #
+# PLEASE NOTE: do not give internet access to DNS320 NAS. There is a firmware breach revealed in 2020.
+#
 # TODO::
 # detectdangerous needs improvments
+# add forced_shutdown (bypass dangerous)?
 ######################
 import requests
 import base64
 
 # NAS IP and port
 ip_address = '192.168.8.101'
-port = 80  # default HTTP port
+port = 80  # HTTP port. Maybe implement SSL?
 
 # Login URL
 login_url = f'http://{ip_address}:{port}/cgi-bin/login_mgr.cgi'
@@ -50,12 +53,12 @@ payload = {
 	'pwd': base64.b64encode(password.encode()).decode(),
 	'port': str(port)
 }
-# Your existing session
+# Create session
 session = requests.Session()
 # Send POST request to login
 response = session.post(login_url, data=payload)
 
-def detect_dangerous():
+def DetectDangerous():
 	"""
 	Returns True if dangerous, False otherwise.
 	"""
@@ -79,38 +82,32 @@ def detect_dangerous():
 		print(f"Failed to detect danger: {response.status_code}")
 		return True  # Be cautious and assume dangerous if detection fails
 
-def shutdown():
-	if detect_dangerous():
-		print("Shutdown aborted: Dangerous operations detected.")
+def WhatWeWant(cmd):
+	if DetectDangerous():
+		print("Operation aborted: Dangerous operations detected.")
 		return
-	# Send shutdown command
-	data = {'cmd': 'cgi_shutdown'}
-	response = session.post(POWER_URL, data=data)
-	if response.status_code == 200:
-		print("Shutdown command sent successfully.")
-		print("/web/dsk_mgr/wait.html.")
-	else:
-		print(f"Failed to send shutdown command: {response.status_code}")
-
-def restart():
-	if detect_dangerous():
-		print("Restart aborted: Dangerous operations detected.")
-		return
-	# Send restart command
+	# Check command
+	if (cmd != "shutdown" and cmd != "restart"):
+		return ("WRONG COMMAND (" + cmd + "). shutdown or restart only")
+	# Send command
 	data = {'cmd': 'cgi_restart'}
+	msg = "PLEASE WAIT FOR RESTART"
+	if (cmd == "shutdown"):
+		data = {'cmd': 'cgi_shutdown'}
+		msg = "SHUTTING DOWN NOW"
 	response = session.post(POWER_URL, data=data)
 	if response.status_code == 200:
-		print("Restart command sent successfully.")
-		print("/web/dsk_mgr/wait.html.")
+		print(f"{cmd} command sent successfully.")
+		print(msg)
 	else:
-		print(f"Failed to send restart command: {response.status_code}")
-
+		print(f"Failed to send command: {response.status_code}")
+		
 if response.ok:
 	# You may need to inspect response.text or response.status_code
-	print("Login request sent. Received something::")
+	print("Login request sent. Proceeding command::")
 	# Usage example, uncomment:
-	# restart()
+	# WhatWeWant("restart")
 	# or
-	# shutdown()
+	# WhatWeWant("shutdown")
 else:
 	print("HTTP session error.")
